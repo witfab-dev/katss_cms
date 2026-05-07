@@ -2,7 +2,7 @@
 // config/database.php
 class Database {
     private $host = "localhost";
-    private $db_name = "katss_cms";
+    private $db_name = "kats_cms";
     private $username = "root";
     private $password = "";
     public $conn;

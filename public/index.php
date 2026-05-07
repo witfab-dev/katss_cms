@@ -1,66 +1,96 @@
 <?php
 /**
  * KATSS - Kirehe Adventist Technical Secondary School
- * Main Website - All pages combined
+ * Main Website - All pages combined with dynamic image display
  */
 
 require_once '../config/database.php';
 $database = new Database();
 $db = $database->getConnection();
 
-// Fetch data
+// Fetch events
 try {
     $stmt = $db->prepare("SELECT * FROM events WHERE status = 'published' ORDER BY event_date DESC LIMIT 8");
     $stmt->execute();
     $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $events = []; }
 
+// Fetch featured events
 try {
     $stmt = $db->prepare("SELECT * FROM events WHERE status = 'published' AND is_featured = 1 ORDER BY event_date DESC LIMIT 3");
     $stmt->execute();
     $featured_events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $featured_events = []; }
 
+// Fetch gallery items
 try {
     $stmt = $db->prepare("SELECT * FROM gallery_items WHERE status = 'active' ORDER BY created_at DESC LIMIT 12");
     $stmt->execute();
     $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $gallery_items = []; }
 
-// Image helpers
+/**
+ * Resolve image path from database to a working URL
+ * DB stores: uploads/events/filename.jpg
+ * Public accesses: admin/uploads/events/filename.jpg
+ */
 function resolve_image(string $raw, string $fallback = ''): string {
     $raw = trim($raw);
     if ($raw === '') return $fallback;
-    if (preg_match('#^https?://#i', $raw)) return htmlspecialchars($raw, ENT_QUOTES, 'UTF-8');
-    $path = ltrim($raw, '/');
-    if (file_exists(__DIR__ . '/' . $path)) return htmlspecialchars($path, ENT_QUOTES, 'UTF-8');
-    if (file_exists(__DIR__ . '/admin/' . $path)) return 'admin/' . htmlspecialchars($path, ENT_QUOTES, 'UTF-8');
-    if (strpos($path, 'uploads/') === 0) {
-        if (file_exists(__DIR__ . '/admin/' . $path)) return 'admin/' . htmlspecialchars($path, ENT_QUOTES, 'UTF-8');
-        return 'admin/' . htmlspecialchars($path, ENT_QUOTES, 'UTF-8');
+    
+    // External URLs pass through unchanged
+    if (preg_match('#^https?://#i', $raw)) {
+        return htmlspecialchars($raw, ENT_QUOTES, 'UTF-8');
     }
-    return htmlspecialchars($path, ENT_QUOTES, 'UTF-8');
+    
+    $path = ltrim($raw, '/');
+    $path = preg_replace('#^(\.\./|\./)+#', '', $path);
+    
+    // Try multiple possible paths
+    $possiblePaths = [
+        'admin/' . $path,
+        $path,
+        'admin/' . ltrim($path, 'admin/'),
+    ];
+    
+    foreach ($possiblePaths as $tryPath) {
+        $fullPath = __DIR__ . '/' . $tryPath;
+        if (file_exists($fullPath)) {
+            return htmlspecialchars($tryPath, ENT_QUOTES, 'UTF-8');
+        }
+    }
+    
+    return $fallback;
 }
 
 function event_image(array $event): string {
+    $fallback = 'https://placehold.co/800x450/003366/D4AF37?text=KATSS+Event';
     foreach (['image_url', 'image_path', 'thumbnail_path'] as $col) {
-        if (!empty($event[$col])) return resolve_image($event[$col], 'https://placehold.co/800x450/003366/D4AF37?text=KATSS+Event');
+        if (!empty($event[$col])) return resolve_image($event[$col], $fallback);
     }
-    return 'https://placehold.co/800x450/003366/D4AF37?text=KATSS+Event';
+    return $fallback;
 }
 
 function gallery_image(array $item): string {
     $title = urlencode($item['title'] ?? 'Gallery');
-    foreach (['thumbnail_path', 'file_path', 'media_url'] as $col) {
-        if (!empty($item[$col])) return resolve_image($item[$col], "https://placehold.co/600x400/003366/D4AF37?text={$title}");
+    $fallback = "https://placehold.co/600x400/003366/D4AF37?text={$title}";
+    // Check media_url FIRST since that's what your database uses
+    foreach (['media_url', 'file_path', 'thumbnail_path'] as $col) {
+        if (!empty($item[$col])) {
+            return resolve_image($item[$col], $fallback);
+        }
     }
-    return "https://placehold.co/600x400/003366/D4AF37?text={$title}";
+    return $fallback;
 }
 
 function gallery_video(array $item): string {
-    if (!empty($item['file_path'])) return resolve_image($item['file_path']);
-    if (!empty($item['media_url'])) return resolve_image($item['media_url']);
-    return '';
+    $fallback = '';
+    foreach (['media_url', 'file_path'] as $col) {
+        if (!empty($item[$col])) {
+            return resolve_image($item[$col], $fallback);
+        }
+    }
+    return $fallback;
 }
 ?>
 <!DOCTYPE html>
@@ -101,7 +131,7 @@ function gallery_video(array $item): string {
   <div class="navbar">
     <div class="container">
       <a class="brand" href="#home" data-page="home">
-        <div class="brand-logo"><img src="../images/logo.jpeg" alt="KATSS"></div>
+        <div class="brand-logo"><img src="../images/logo.jpeg" alt="KATSS" onerror="this.src='https://placehold.co/46x46/003366/D4AF37?text=K';"></div>
         <div class="brand-text"><span class="brand-name">KATSS</span><span class="brand-tagline">Dream · Believe · Achieve</span></div>
       </a>
       <nav class="main-nav">
@@ -179,7 +209,12 @@ function gallery_video(array $item): string {
           <?php foreach ($featured_events as $event): ?>
           <div class="swiper-slide">
             <div class="highlight-card">
-              <div class="aspect aspect--3-2"><img src="<?php echo event_image($event); ?>" alt="<?php echo htmlspecialchars($event['title']); ?>" loading="lazy"></div>
+              <div class="aspect aspect--3-2">
+                <img src="<?php echo event_image($event); ?>" 
+                     alt="<?php echo htmlspecialchars($event['title']); ?>" 
+                     loading="lazy"
+                     onerror="this.onerror=null;this.src='https://placehold.co/800x540/002147/D4AF37?text=KATSS';">
+              </div>
               <div class="highlight-content">
                 <div class="highlight-date"><i class="bi bi-calendar3"></i> <?php echo date('F d, Y', strtotime($event['event_date'])); ?></div>
                 <h3><?php echo htmlspecialchars($event['title']); ?></h3>
@@ -218,7 +253,7 @@ function gallery_video(array $item): string {
           foreach($programs as $p): ?>
           <div class="swiper-slide" style="height:auto;">
             <div class="program-card">
-              <div class="aspect aspect--16-9"><img src="<?php echo $p['img']; ?>" alt="<?php echo $p['title']; ?>" loading="lazy"></div>
+              <div class="aspect aspect--16-9"><img src="<?php echo $p['img']; ?>" alt="<?php echo $p['title']; ?>" loading="lazy" onerror="this.src='https://placehold.co/600x338/002147/D4AF37?text=<?php echo urlencode($p['title']); ?>';"></div>
               <div class="program-card-body"><div class="program-icon"><i class="bi <?php echo $p['icon']; ?>"></i></div><h3><?php echo $p['title']; ?></h3><p><?php echo $p['desc']; ?></p></div>
             </div>
           </div>
@@ -275,7 +310,7 @@ function gallery_video(array $item): string {
           <a href="#news-events" data-page="news-events" class="btn btn-ghost btn-sm" style="margin-top:20px;">View All News <i class="bi bi-arrow-right"></i></a>
         </div>
         <div>
-          <div class="upcoming-card" style="background-image:url('images/student.jpg');">
+          <div class="upcoming-card" style="background-image:url('../images/schoolcomp.jpg');">
             <div class="upcoming-inner"><h4>Upcoming: Open Day 2025</h4><p>Visit our campus, meet teachers, explore programs.</p><a href="#contact" data-page="contact" class="btn btn-primary btn-sm">Get Directions <i class="bi bi-geo-alt"></i></a></div>
           </div>
         </div>
@@ -349,9 +384,9 @@ function gallery_video(array $item): string {
     <div class="container">
       <p class="section-label">Academic Pathways</p><h2 class="section-title">Our Three Learning Tracks</h2><div class="divider"></div>
       <div class="levels-grid">
-        <div class="level-card"><div class="aspect aspect--3-2"><img src="images/images.jpeg" alt="O-Level" loading="lazy"></div><div class="level-details"><h3>Ordinary Level (S1–S3)</h3><p>Establishes a strong foundation in core sciences, humanities, and languages.</p></div></div>
-        <div class="level-card"><div class="aspect aspect--3-2"><img src="images/1000003811.jpg" alt="A-Level" loading="lazy"></div><div class="level-details"><h3>Advanced Level (S4–S6)</h3><p>Students select professional combinations to prepare for university entrance.</p></div></div>
-        <div class="level-card"><div class="aspect aspect--3-2"><img src="images/auto.png" alt="TVET" loading="lazy"></div><div class="level-details"><h3>TVET Programs</h3><p>Dedicated technical vocational training leading to industry certifications.</p></div></div>
+        <div class="level-card"><div class="aspect aspect--3-2"><img src="../images/images.jpeg" alt="O-Level" loading="lazy" onerror="this.src='https://placehold.co/600x400/002147/D4AF37?text=O+Level';"></div><div class="level-details"><h3>Ordinary Level (S1–S3)</h3><p>Establishes a strong foundation in core sciences, humanities, and languages.</p></div></div>
+        <div class="level-card"><div class="aspect aspect--3-2"><img src="../images/1000003811.jpg" alt="A-Level" loading="lazy" onerror="this.src='https://placehold.co/600x400/002147/D4AF37?text=A+Level';"></div><div class="level-details"><h3>Advanced Level (S4–S6)</h3><p>Students select professional combinations to prepare for university entrance.</p></div></div>
+        <div class="level-card"><div class="aspect aspect--3-2"><img src="../images/auto.png" alt="TVET" loading="lazy" onerror="this.src='https://placehold.co/600x400/002147/D4AF37?text=TVET';"></div><div class="level-details"><h3>TVET Programs</h3><p>Dedicated technical vocational training leading to industry certifications.</p></div></div>
       </div>
     </div>
   </section>
@@ -390,7 +425,12 @@ function gallery_video(array $item): string {
       <div class="news-grid">
         <?php if (!empty($events)): foreach ($events as $event): ?>
         <article class="card">
-          <div class="aspect aspect--16-9"><img src="<?php echo event_image($event); ?>" alt="<?php echo htmlspecialchars($event['title']); ?>" loading="lazy"></div>
+          <div class="aspect aspect--16-9">
+            <img src="<?php echo event_image($event); ?>" 
+                 alt="<?php echo htmlspecialchars($event['title']); ?>" 
+                 loading="lazy"
+                 onerror="this.onerror=null;this.src='https://placehold.co/600x338/002147/D4AF37?text=News';">
+          </div>
           <div class="card-body">
             <span class="card-label"><?php echo htmlspecialchars($event['category'] ?? 'General'); ?></span>
             <h3 class="card-title"><a href="#"><?php echo htmlspecialchars($event['title']); ?></a></h3>
@@ -399,9 +439,9 @@ function gallery_video(array $item): string {
           </div>
         </article>
         <?php endforeach; else: ?>
-        <article class="card"><div class="aspect aspect--16-9"><img src="images/sport.jpg" alt="News" loading="lazy"></div><div class="card-body"><span class="card-label">Academics</span><h3 class="card-title"><a href="#">Record-Breaking National Exam Results</a></h3><p class="card-excerpt">KATSS celebrates its highest-ever pass rate in national examinations.</p><div class="card-meta"><i class="bi bi-calendar3"></i><time>October 7, 2025</time></div></div></article>
-        <article class="card"><div class="aspect aspect--16-9"><img src="images/schoolcomp.jpg" alt="Service" loading="lazy"></div><div class="card-body"><span class="card-label">Service</span><h3 class="card-title"><a href="#">Community Clean-Up Drive</a></h3><p class="card-excerpt">Students volunteered to renovate the local Kirehe public library.</p><div class="card-meta"><i class="bi bi-calendar3"></i><time>September 15, 2025</time></div></div></article>
-        <article class="card"><div class="aspect aspect--16-9"><img src="images/1000004436.jpg" alt="Teachers Day" loading="lazy"></div><div class="card-body"><span class="card-label">Staff</span><h3 class="card-title"><a href="#">World Teachers' Day Celebration</a></h3><p class="card-excerpt">KATSS joined Rwanda in honouring outstanding educators.</p><div class="card-meta"><i class="bi bi-calendar3"></i><time>November 02, 2024</time></div></div></article>
+        <article class="card"><div class="aspect aspect--16-9"><img src="../images/sport.jpg" alt="News" loading="lazy" onerror="this.src='https://placehold.co/600x338/002147/D4AF37?text=News';"></div><div class="card-body"><span class="card-label">Academics</span><h3 class="card-title"><a href="#">Record-Breaking National Exam Results</a></h3><p class="card-excerpt">KATSS celebrates its highest-ever pass rate in national examinations.</p><div class="card-meta"><i class="bi bi-calendar3"></i><time>October 7, 2025</time></div></div></article>
+        <article class="card"><div class="aspect aspect--16-9"><img src="../images/schoolcomp.jpg" alt="Service" loading="lazy" onerror="this.src='https://placehold.co/600x338/002147/D4AF37?text=Service';"></div><div class="card-body"><span class="card-label">Service</span><h3 class="card-title"><a href="#">Community Clean-Up Drive</a></h3><p class="card-excerpt">Students volunteered to renovate the local Kirehe public library.</p><div class="card-meta"><i class="bi bi-calendar3"></i><time>September 15, 2025</time></div></div></article>
+        <article class="card"><div class="aspect aspect--16-9"><img src="../images/1000004436.jpg" alt="Teachers Day" loading="lazy" onerror="this.src='https://placehold.co/600x338/002147/D4AF37?text=Teachers+Day';"></div><div class="card-body"><span class="card-label">Staff</span><h3 class="card-title"><a href="#">World Teachers' Day Celebration</a></h3><p class="card-excerpt">KATSS joined Rwanda in honouring outstanding educators.</p><div class="card-meta"><i class="bi bi-calendar3"></i><time>November 02, 2024</time></div></div></article>
         <?php endif; ?>
       </div>
     </div>
@@ -451,21 +491,46 @@ function gallery_video(array $item): string {
           $mediaType = $item['media_type'] ?? 'image';
           if ($mediaType === 'video'): ?>
           <div class="gallery-item gallery-item--video" data-type="video" data-video="<?php echo gallery_video($item); ?>">
-            <div class="video-thumb"><video muted loop preload="metadata" poster="<?php echo gallery_image($item); ?>"><source src="<?php echo gallery_video($item); ?>" type="video/mp4"></video><div class="play-overlay"><i class="bi bi-play-circle-fill"></i></div></div>
+            <div class="video-thumb">
+              <video muted loop preload="metadata" poster="<?php echo gallery_image($item); ?>">
+                <source src="<?php echo gallery_video($item); ?>" type="video/mp4">
+              </video>
+              <div class="play-overlay"><i class="bi bi-play-circle-fill"></i></div>
+            </div>
             <div class="gallery-overlay"><h4><?php echo htmlspecialchars($item['title']); ?></h4></div>
           </div>
-          <?php else: $fullSrc = !empty($item['file_path']) ? resolve_image($item['file_path']) : gallery_image($item); ?>
-          <div class="gallery-item" data-type="image" data-src="<?php echo $fullSrc; ?>">
-            <div class="aspect aspect--3-2"><img src="<?php echo gallery_image($item); ?>" alt="<?php echo htmlspecialchars($item['title']); ?>" loading="lazy"></div>
+          <?php else: ?>
+          <div class="gallery-item" data-type="image" data-src="<?php echo gallery_image($item); ?>">
+            <div class="aspect aspect--3-2">
+              <img src="<?php echo gallery_image($item); ?>" 
+                   alt="<?php echo htmlspecialchars($item['title']); ?>" 
+                   loading="lazy"
+                   onerror="this.onerror=null;this.src='https://placehold.co/600x400/002147/D4AF37?text=<?php echo urlencode($item['title'] ?? 'Gallery'); ?>';">
+            </div>
             <div class="gallery-overlay"><h4><?php echo htmlspecialchars($item['title']); ?></h4></div>
           </div>
           <?php endif;
         endforeach; else: ?>
-        <?php $static = [['src'=>'../images/1000003811.jpg','title'=>'Classroom Learning'],['src'=>'../images/lab.jpg','title'=>'Computer Laboratory'],['src'=>'../images/sport.jpg','title'=>'Sports Day'],['src'=>'../images/account.jpg','title'=>'Accounting Program'],['src'=>'../images/bdc.jpg','title'=>'Technical Workshop'],['src'=>'../images/1000005151.jpg','title'=>'School Compound']];
+        <?php $static = [
+          ['src'=>'../images/1000003811.jpg','title'=>'Classroom Learning'],
+          ['src'=>'../images/lab.jpg','title'=>'Computer Laboratory'],
+          ['src'=>'../images/sport.jpg','title'=>'Sports Day'],
+          ['src'=>'../images/account.jpg','title'=>'Accounting Program'],
+          ['src'=>'../images/bdc.jpg','title'=>'Technical Workshop'],
+          ['src'=>'../images/1000005151.jpg','title'=>'School Compound']
+        ];
         foreach ($static as $g): ?>
-        <div class="gallery-item" data-type="image" data-src="<?php echo $g['src']; ?>"><div class="aspect aspect--3-2"><img src="<?php echo $g['src']; ?>" alt="<?php echo $g['title']; ?>" loading="lazy"></div><div class="gallery-overlay"><h4><?php echo $g['title']; ?></h4></div></div>
+        <div class="gallery-item" data-type="image" data-src="<?php echo $g['src']; ?>">
+          <div class="aspect aspect--3-2">
+            <img src="<?php echo $g['src']; ?>" alt="<?php echo $g['title']; ?>" loading="lazy" onerror="this.src='https://placehold.co/600x400/002147/D4AF37?text=<?php echo urlencode($g['title']); ?>';">
+          </div>
+          <div class="gallery-overlay"><h4><?php echo $g['title']; ?></h4></div>
+        </div>
         <?php endforeach; ?>
-        <div class="gallery-item gallery-item--video" data-type="video" data-video="images/tors.mp4"><div class="video-thumb"><video muted loop preload="metadata"><source src="images/tors.mp4" type="video/mp4"></video><div class="play-overlay"><i class="bi bi-play-circle-fill"></i></div></div><div class="gallery-overlay"><h4>Campus Tour 2024</h4></div></div>
+        <div class="gallery-item gallery-item--video" data-type="video" data-video="../images/tors.mp4">
+          <div class="video-thumb"><video muted loop preload="metadata"><source src="../images/tors.mp4" type="video/mp4"></video><div class="play-overlay"><i class="bi bi-play-circle-fill"></i></div></div>
+          <div class="gallery-overlay"><h4>Campus Tour 2024</h4></div>
+        </div>
         <?php endif; ?>
       </div>
     </div>
@@ -567,7 +632,7 @@ function gallery_video(array $item): string {
 
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-<script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

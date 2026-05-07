@@ -64,7 +64,8 @@ $isLoggedIn = isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KATSS CMS - Admin Panel</title>
+    <title>KATSS - Admin Panel</title>
+    <link rel="icon" type="image/jpeg" href="../images/logo.jpeg">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="admin-style.css">
 </head>
@@ -77,7 +78,7 @@ $isLoggedIn = isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'
             <div class="login-logo">
                 <i class="bi bi-shield-lock-fill"></i>
             </div>
-            <h1>KATSS CMS</h1>
+            <h1>KATSS ADMIN PANEL</h1>
             <p>Admin Panel Login</p>
         </div>
         
@@ -127,7 +128,7 @@ $isLoggedIn = isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'
         <button class="sidebar-toggle" id="sidebarToggle">
             <i class="bi bi-list"></i>
         </button>
-        <h1><i class="bi bi-speedometer2"></i> KATSS CMS</h1>
+        <h1><img src="../images/logo.jpeg" alt="KATSS" style="width: 40px; height: 40px; margin-right: 10px;"> KATSS ADMIN PANEL</h1>
         <div class="header-right">
             <span class="user-info">
                 <i class="bi bi-person-circle"></i>

@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.1
+-- version 5.2.0
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 07, 2026 at 05:47 PM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- Generation Time: May 07, 2026 at 07:58 PM
+-- Server version: 10.4.27-MariaDB
+-- PHP Version: 8.2.0
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `katss_cms`
+-- Database: `kats_cms`
 --
 
 -- --------------------------------------------------------
@@ -66,7 +66,7 @@ CREATE TABLE `admin_users` (
 INSERT INTO `admin_users` (`id`, `username`, `password`, `full_name`, `email`, `role`, `is_active`, `last_login`, `created_at`, `updated_at`, `status`, `login_attempts`, `remember_token`) VALUES
 (1, 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Administrator', 'admin@katsscms.com', 'super_admin', 1, NULL, '2026-05-07 11:27:18', '2026-05-07 11:42:41', 'active', 0, NULL),
 (2, 'witbri', '$2y$10$WOb83ic.QS0SfO3TqyYXneKibaLlHUwrefGTn4KjtO.CZAwkVkWhq', 'Witness fabrice', 'witnessfabrice@gmail.com', 'admin', 1, '2026-05-07 11:50:31', '2026-05-07 11:44:27', '2026-05-07 11:50:31', 'active', 0, 'c28f3b449a090024c362aa2ac3065a664b52c04e91ce5501c16343af6cb43456'),
-(3, 'mddev', '$2y$10$pSsDXrMp1RVB1sdy/ooG2ezdjAjjXUzqk2X2a3smskZvPewWV2ZIm', 'muhire dieudonne', 'muhiredieu7@gmail.com', 'admin', 1, '2026-05-07 15:01:30', '2026-05-07 15:01:11', '2026-05-07 15:01:30', 'active', 0, NULL);
+(3, 'mddev', '$2y$10$pSsDXrMp1RVB1sdy/ooG2ezdjAjjXUzqk2X2a3smskZvPewWV2ZIm', 'muhire dieudonne', 'muhiredieu7@gmail.com', 'admin', 1, '2026-05-07 17:54:56', '2026-05-07 15:01:11', '2026-05-07 17:54:56', 'active', 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -100,10 +100,9 @@ CREATE TABLE `events` (
 --
 
 INSERT INTO `events` (`id`, `title`, `slug`, `description`, `content`, `category`, `excerpt`, `image_url`, `event_date`, `event_time`, `location`, `featured_image`, `status`, `is_featured`, `views`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'assemble in kats', 'assemble-in-kats', NULL, 'to day was good day where the school principal vist student on assemble', 'campus', 'to day was good day where the school principal vist student on assemble', 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIAJQA+QMBIgACEQEDEQH/xAAbAAABBQEBAAAAAAAAAAAAAAAFAAIDBAYBB//EAFUQAAEDAwIDBAQICAgLCAMAAAECAwQABRESIQYTMSJBUWEUcYGRBxUyQqGxwdEWI1JTYpLS8CQzVHKCwtPhFzRDVmNzlJWissM1dIOEo7Pi8SVERf/EABoBAAMBAQEBAAAAAAAAAAAAAAABAgMEBQb/xAAvEQACAQMCBQEIAQUAAAAAAAAAAQIDERIEIQUTMUFRFBUiIzJCU', '2026-05-07', NULL, NULL, NULL, 'published', 1, 0, NULL, '2026-05-07 11:55:27', '2026-05-07 11:59:08'),
-(2, 'mayor vist campus', 'mayor-vist-campus', NULL, 'mayor vist campus', 'academic', 'mayor vist campus', 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIAJQA+QMBIgACEQEDEQH/xAAbAAABBQEBAAAAAAAAAAAAAAAFAAIDBAYBB//EAFUQAAEDAwIDBAQICAgLCAMAAAECAwQABRESIQYTMSJBUWEUcYGRBxUyQqGxwdEWI1JTYpLS8CQzVHKCwtPhFzRDVmNzlJWissM1dIOEo7Pi8SVERf/EABoBAAMBAQEBAAAAAAAAAAAAAAABAgMEBQb/xAAvEQACAQMCBQEIAQUAAAAAAAAAAQIDERIEIQUTMUFRFBUiIzJCU', '2026-05-11', NULL, NULL, NULL, 'published', 1, 0, NULL, '2026-05-07 12:24:53', '2026-05-07 12:24:53'),
 (3, 'school lab', 'school-lab', NULL, 'this lab help the student to practice more', 'General', 'the new lab opened', 'admin/uploads/events/1778157577_lab.jpg', '2026-05-07', NULL, NULL, NULL, 'draft', 1, 0, NULL, '2026-05-07 12:39:37', '2026-05-07 12:59:52'),
-(4, 'school compound', '', NULL, 'this is our compound', 'General', 'katss compound', 'admin/uploads/events/1778164619_1000005151.jpg', '2026-05-07', NULL, NULL, NULL, 'published', 1, 0, NULL, '2026-05-07 14:36:59', '2026-05-07 14:36:59');
+(4, 'school compound', '', NULL, 'this is our compound', 'General', 'katss compound', 'admin/uploads/events/1778164619_1000005151.jpg', '2026-05-07', NULL, NULL, NULL, 'published', 1, 0, NULL, '2026-05-07 14:36:59', '2026-05-07 14:36:59'),
+(5, 'nesa super vision', 'nesa-super-vision', NULL, 'nesa visit our school', 'General', 'nesa visit our school', 'uploads/events/1778173435_f7362f3c.jpeg', '2026-05-07', NULL, NULL, NULL, 'published', 1, 0, NULL, '2026-05-07 17:03:55', '2026-05-07 17:03:55');
 
 -- --------------------------------------------------------
 
@@ -131,6 +130,16 @@ CREATE TABLE `gallery_items` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `gallery_items`
+--
+
+INSERT INTO `gallery_items` (`id`, `title`, `media_type`, `media_url`, `description`, `file_path`, `thumbnail_path`, `file_type`, `file_size`, `dimensions`, `category`, `tags`, `status`, `sort_order`, `is_featured`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'BUILDING CONSTRUCTION', 'image', NULL, 'Trainee in practical activities', 'uploads/gallery/1778173501_f1687c59.jpg', '', 'image', NULL, NULL, '', NULL, 'active', 0, 0, NULL, '2026-05-07 17:05:01', '2026-05-07 17:05:01'),
+(2, 'tourism trainee  in practice', 'video', NULL, 'in tourist attraction', '', '', 'image', NULL, NULL, '', NULL, 'active', 0, 0, NULL, '2026-05-07 17:28:53', '2026-05-07 17:28:53'),
+(3, 'software development', 'image', NULL, 'sod in trip', 'uploads/gallery/1778176193_fa3367d5.jpg', '', 'image', NULL, NULL, '', NULL, 'active', 0, 0, NULL, '2026-05-07 17:49:53', '2026-05-07 17:55:34'),
+(4, 'competition', 'image', 'uploads/gallery/1778176582_fa21e234.jpg', 'competition', 'uploads/gallery/1778176582_fa21e234.jpg', '', 'image', NULL, NULL, '', NULL, 'active', 0, 0, NULL, '2026-05-07 17:56:22', '2026-05-07 17:56:52');
 
 -- --------------------------------------------------------
 
@@ -249,13 +258,13 @@ ALTER TABLE `admin_users`
 -- AUTO_INCREMENT for table `events`
 --
 ALTER TABLE `events`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `gallery_items`
 --
 ALTER TABLE `gallery_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `pages`
