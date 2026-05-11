@@ -29,13 +29,16 @@ register_shutdown_function(function() {
     $error = error_get_last();
     if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
         http_response_code(500);
-        echo json_encode([
-            'error' => 'Server error',
-            'message' => $error['message']
-        ]);
-        exit();
+        echo json_encode(['error' => 'Fatal error occurred', 'message' => $error['message']]);
     }
 });
+
+// Custom error handler for JSON responses
+function json_error($message, $code = 500) {
+    http_response_code($code);
+    echo json_encode(['error' => $message]);
+    exit();
+}
 
 session_start();
 
@@ -90,7 +93,7 @@ if (empty($action) && isset($_FILES['image'])) {
     $type = $_POST['type'] ?? 'events';
 }
 
-if (!in_array($type, ['events', 'gallery'])) {
+if (!in_array($type, ['events', 'gallery', 'management_team', 'announcements'])) {
     $type = 'events';
 }
 
@@ -125,11 +128,15 @@ try {
             handleStats($db);
             break;
         default:
+            http_response_code(400);
             echo json_encode([
                 'error' => 'Invalid action: "' . $action . '"',
                 'available' => ['list','create','update','delete','toggle_status','toggle_featured','bulk_action','upload_image','stats']
             ]);
     }
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
@@ -193,6 +200,39 @@ function handleList($db, $type) {
         }
         
         $sql .= " ORDER BY created_at DESC LIMIT $limit OFFSET $offset";
+    } elseif ($type === 'management_team') {
+        $sql = "SELECT * FROM management_team WHERE 1=1";
+        $countSql = "SELECT COUNT(*) FROM management_team WHERE 1=1";
+        
+        if ($search) {
+            $sql .= " AND (name LIKE :search OR post LIKE :search2)";
+            $countSql .= " AND (name LIKE :search OR post LIKE :search2)";
+            $params[':search'] = "%$search%";
+            $params[':search2'] = "%$search%";
+        }
+        if ($status) {
+            $sql .= " AND status = :status";
+            $countSql .= " AND status = :status";
+            $params[':status'] = $status;
+        }
+        
+        $sql .= " ORDER BY sort_order ASC, created_at DESC LIMIT $limit OFFSET $offset";
+    } elseif ($type === 'announcements') {
+        $sql = "SELECT * FROM announcements WHERE 1=1";
+        $countSql = "SELECT COUNT(*) FROM announcements WHERE 1=1";
+        
+        if ($search) {
+            $sql .= " AND (title LIKE :search OR content LIKE :search2)";
+            $countSql .= " AND (title LIKE :search OR content LIKE :search2)";
+            $params[':search'] = "%$search%";
+            $params[':search2'] = "%$search%";
+        }
+        if ($status) {
+            $sql .= " AND status = :status";
+            $countSql .= " AND status = :status";
+        }
+        
+        $sql .= " ORDER BY priority DESC, created_at DESC LIMIT $limit OFFSET $offset";
     } else {
         $sql = "SELECT * FROM gallery_items WHERE 1=1";
         $countSql = "SELECT COUNT(*) FROM gallery_items WHERE 1=1";
@@ -228,6 +268,8 @@ function handleList($db, $type) {
             if (!empty($item['image_url'])) {
                 $item['image_url'] = formatImageUrl($item['image_url']);
             }
+        } elseif ($type === 'management_team') {
+            // No image formatting needed for management team
         } else {
             // Gallery: Check media_url first (your DB uses this column)
             if (!empty($item['media_url'])) {
@@ -250,6 +292,9 @@ function handleList($db, $type) {
         } catch (Exception $e) {
             $categories = [];
         }
+    } elseif ($type === 'management_team') {
+        // No categories for management team
+        $categories = [];
     }
     
     echo json_encode([
@@ -290,6 +335,22 @@ function handleCreate($db, $type) {
         $stmt->execute([$title, $slug, $content, $excerpt, $image_url, $category, $event_date, $is_featured, $status]);
         
         echo json_encode(['success' => true, 'message' => 'Event created', 'id' => $db->lastInsertId()]);
+    } elseif ($type === 'management_team') {
+        $name = trim(getInput('name', ''));
+        $telephone = trim(getInput('telephone', ''));
+        $post = trim(getInput('post', ''));
+        $status = getInput('status', 'active');
+        $sort_order = (int)getInput('sort_order', 0);
+        
+        if (empty($name) || empty($telephone) || empty($post)) {
+            echo json_encode(['error' => 'Name, telephone, and post are required']);
+            return;
+        }
+        
+        $stmt = $db->prepare("INSERT INTO management_team (name, telephone, post, status, sort_order, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$name, $telephone, $post, $status, $sort_order]);
+        
+        echo json_encode(['success' => true, 'message' => 'Management team member created', 'id' => $db->lastInsertId()]);
     } else {
         $title = trim(getInput('title', ''));
         $description = trim(getInput('description', ''));
@@ -314,13 +375,27 @@ function handleCreate($db, $type) {
         $stmt->execute([$title, $description, $media_type, $media_url, $file_path, $thumbnail_path, $category, $status]);
         
         echo json_encode(['success' => true, 'message' => 'Gallery item created', 'id' => $db->lastInsertId()]);
+    } elseif ($type === 'announcements') {
+        $title = trim(getInput('title', ''));
+        $content = trim(getInput('content', ''));
+        $priority = getInput('priority', 'medium');
+        $status = getInput('status', 'active');
+        
+        if (empty($title) || empty($content)) {
+            echo json_encode(['error' => 'Title and content are required']);
+            return;
+        }
+        
+        $stmt = $db->prepare("INSERT INTO announcements (title, content, priority, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$title, $content, $priority, $status, $_SESSION['admin_id']]);
+        
+        echo json_encode(['success' => true, 'message' => 'Announcement created', 'id' => $db->lastInsertId()]);
     }
 }
 
 // ==================== UPDATE ====================
 function handleUpdate($db, $type) {
     $id = (int)getInput('id', 0);
-    $table = $type === 'events' ? 'events' : 'gallery_items';
     
     if ($id <= 0) {
         echo json_encode(['error' => 'Invalid ID']);
@@ -348,6 +423,37 @@ function handleUpdate($db, $type) {
         $stmt->execute([$title, $content, $excerpt, $category, $event_date, $status, $is_featured, $image_url, $id]);
         
         echo json_encode(['success' => true, 'message' => 'Event updated']);
+    } elseif ($type === 'management_team') {
+        $name = trim(getInput('name', ''));
+        $telephone = trim(getInput('telephone', ''));
+        $post = trim(getInput('post', ''));
+        $status = getInput('status', 'active');
+        $sort_order = (int)getInput('sort_order', 0);
+        
+        if (empty($name) || empty($telephone) || empty($post)) {
+            echo json_encode(['error' => 'Name, telephone, and post are required']);
+            return;
+        }
+        
+        $stmt = $db->prepare("UPDATE management_team SET name=?, telephone=?, post=?, status=?, sort_order=?, updated_at=NOW() WHERE id=?");
+        $stmt->execute([$name, $telephone, $post, $status, $sort_order, $id]);
+        
+        echo json_encode(['success' => true, 'message' => 'Management team member updated']);
+    } elseif ($type === 'announcements') {
+        $title = trim(getInput('title', ''));
+        $content = trim(getInput('content', ''));
+        $priority = getInput('priority', 'medium');
+        $status = getInput('status', 'active');
+        
+        if (empty($title) || empty($content)) {
+            echo json_encode(['error' => 'Title and content are required']);
+            return;
+        }
+        
+        $stmt = $db->prepare("UPDATE announcements SET title=?, content=?, priority=?, status=?, updated_at=NOW() WHERE id=?");
+        $stmt->execute([$title, $content, $priority, $status, $id]);
+        
+        echo json_encode(['success' => true, 'message' => 'Announcement updated']);
     } else {
         $title = trim(getInput('title', ''));
         $description = trim(getInput('description', ''));
@@ -398,19 +504,25 @@ function handleDelete($db, $type) {
     }
     
     $ids = array_map('intval', $ids);
-    $table = $type === 'events' ? 'events' : 'gallery_items';
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     
     // Delete files
     if ($type === 'events') {
-        $stmt = $db->prepare("SELECT image_url FROM $table WHERE id IN ($placeholders) AND image_url IS NOT NULL AND image_url != ''");
+        $stmt = $db->prepare("SELECT image_url FROM events WHERE id IN ($placeholders) AND image_url IS NOT NULL AND image_url != ''");
         $stmt->execute($ids);
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $item) {
             $fp = __DIR__ . '/' . ltrim($item['image_url'], '/');
             if (file_exists($fp)) @unlink($fp);
         }
+        $table = 'events';
+    } elseif ($type === 'management_team') {
+        // No files to delete for management team
+        $table = 'management_team';
+    } elseif ($type === 'announcements') {
+        // No files to delete for announcements
+        $table = 'announcements';
     } else {
-        $stmt = $db->prepare("SELECT media_url, file_path, thumbnail_path FROM $table WHERE id IN ($placeholders)");
+        $stmt = $db->prepare("SELECT media_url, file_path, thumbnail_path FROM gallery_items WHERE id IN ($placeholders)");
         $stmt->execute($ids);
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $item) {
             foreach (['media_url', 'file_path', 'thumbnail_path'] as $col) {
@@ -420,6 +532,7 @@ function handleDelete($db, $type) {
                 }
             }
         }
+        $table = 'gallery_items';
     }
     
     $stmt = $db->prepare("DELETE FROM $table WHERE id IN ($placeholders)");
@@ -431,20 +544,56 @@ function handleDelete($db, $type) {
 // ==================== TOGGLE STATUS ====================
 function handleToggleStatus($db, $type) {
     $id = (int)getInput('id', 0);
-    $table = $type === 'events' ? 'events' : 'gallery_items';
     
-    $stmt = $db->prepare("SELECT status FROM $table WHERE id = ?");
-    $stmt->execute([$id]);
-    $current = $stmt->fetchColumn();
-    
-    if ($current === false) {
-        echo json_encode(['error' => 'Item not found']);
-        return;
+    if ($type === 'events') {
+        $table = 'events';
+        $stmt = $db->prepare("SELECT status FROM $table WHERE id = ?");
+        $stmt->execute([$id]);
+        $current = $stmt->fetchColumn();
+        
+        if ($current === false) {
+            echo json_encode(['error' => 'Item not found']);
+            return;
+        }
+        
+        $new = ($current === 'published') ? 'draft' : 'published';
+    } elseif ($type === 'management_team') {
+        $table = 'management_team';
+        $stmt = $db->prepare("SELECT status FROM $table WHERE id = ?");
+        $stmt->execute([$id]);
+        $current = $stmt->fetchColumn();
+        
+        if ($current === false) {
+            echo json_encode(['error' => 'Item not found']);
+            return;
+        }
+        
+        $new = ($current === 'active') ? 'inactive' : 'active';
+    } elseif ($type === 'announcements') {
+        $table = 'announcements';
+        $stmt = $db->prepare("SELECT status FROM $table WHERE id = ?");
+        $stmt->execute([$id]);
+        $current = $stmt->fetchColumn();
+        
+        if ($current === false) {
+            echo json_encode(['error' => 'Item not found']);
+            return;
+        }
+        
+        $new = ($current === 'active') ? 'inactive' : 'active';
+    } else {
+        $table = 'gallery_items';
+        $stmt = $db->prepare("SELECT status FROM $table WHERE id = ?");
+        $stmt->execute([$id]);
+        $current = $stmt->fetchColumn();
+        
+        if ($current === false) {
+            echo json_encode(['error' => 'Item not found']);
+            return;
+        }
+        
+        $new = ($current === 'active') ? 'inactive' : 'active';
     }
-    
-    $new = ($type === 'events') 
-        ? (($current === 'published') ? 'draft' : 'published')
-        : (($current === 'active') ? 'inactive' : 'active');
     
     $stmt = $db->prepare("UPDATE $table SET status = ?, updated_at = NOW() WHERE id = ?");
     $stmt->execute([$new, $id]);
@@ -495,8 +644,15 @@ function handleBulkAction($db, $type) {
     }
     
     $ids = array_map('intval', $ids);
-    $table = $type === 'events' ? 'events' : 'gallery_items';
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    
+    if ($type === 'events') {
+        $table = 'events';
+    } elseif ($type === 'management_team') {
+        $table = 'management_team';
+    } else {
+        $table = 'gallery_items';
+    }
     
     switch ($action) {
         case 'delete':
@@ -505,14 +661,24 @@ function handleBulkAction($db, $type) {
             $msg = 'deleted';
             break;
         case 'publish':
-            $stmt = $db->prepare("UPDATE $table SET status = 'published', updated_at = NOW() WHERE id IN ($placeholders)");
-            $stmt->execute($ids);
-            $msg = 'published';
+            if ($type === 'events') {
+                $stmt = $db->prepare("UPDATE $table SET status = 'published', updated_at = NOW() WHERE id IN ($placeholders)");
+                $stmt->execute($ids);
+                $msg = 'published';
+            } else {
+                echo json_encode(['error' => 'Publish action only available for events']);
+                return;
+            }
             break;
         case 'draft':
-            $stmt = $db->prepare("UPDATE $table SET status = 'draft', updated_at = NOW() WHERE id IN ($placeholders)");
-            $stmt->execute($ids);
-            $msg = 'moved to draft';
+            if ($type === 'events') {
+                $stmt = $db->prepare("UPDATE $table SET status = 'draft', updated_at = NOW() WHERE id IN ($placeholders)");
+                $stmt->execute($ids);
+                $msg = 'moved to draft';
+            } else {
+                echo json_encode(['error' => 'Draft action only available for events']);
+                return;
+            }
             break;
         case 'activate':
             $stmt = $db->prepare("UPDATE $table SET status = 'active', updated_at = NOW() WHERE id IN ($placeholders)");

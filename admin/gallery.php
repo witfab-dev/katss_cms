@@ -482,6 +482,11 @@ try {
                         } elseif (isset($item['file_path']) && !empty($item['file_path'])) {
                             $mediaUrl = $item['file_path'];
                         }
+                        
+                        // Ensure proper base path for videos
+                        if ($mediaUrl && strpos($mediaUrl, 'admin/') !== 0) {
+                            $mediaUrl = 'admin/' . $mediaUrl;
+                        }
                         ?>
                         <?php if ($mediaUrl): ?>
                             <video muted preload="metadata">
@@ -499,6 +504,11 @@ try {
                         $imageUrl = $item['file_path'];
                     } elseif (isset($item['thumbnail_path']) && !empty($item['thumbnail_path'])) {
                         $imageUrl = $item['thumbnail_path'];
+                    }
+                    
+                    // Ensure proper base path for images
+                    if ($imageUrl && strpos($imageUrl, 'admin/') !== 0) {
+                        $imageUrl = 'admin/' . $imageUrl;
                     }
                     ?>
                     <?php if ($imageUrl): ?>

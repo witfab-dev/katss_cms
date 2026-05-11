@@ -48,6 +48,164 @@ ul { list-style: none; }
 .text-center { text-align: center; }
 .text-center .section-subtitle { margin-inline: auto; }
 .divider { width: 48px; height: 3px; background: var(--gold); border-radius: 2px; margin: 16px 0 32px; }
+
+/* Announcement Icon Styles */
+.announcement-icon-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.announcement-icon {
+    font-size: 1.8rem;
+    color: var(--gold);
+    cursor: help;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.announcement-icon:hover {
+    transform: scale(1.1);
+    color: var(--gold-light);
+}
+
+.announcement-tooltip {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--navy);
+    color: var(--white);
+    padding: 15px 20px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    min-width: 280px;
+    max-width: 350px;
+    text-align: center;
+}
+
+.announcement-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid var(--gold);
+    border-top: 8px solid transparent;
+}
+
+.announcement-icon-wrapper:hover .announcement-tooltip {
+    opacity: 1;
+    visibility: visible;
+    top: 120%;
+}
+
+.tooltip-content h4 {
+    margin: 0 0 10px 0;
+    color: var(--gold);
+    font-size: 1.1rem;
+}
+
+.tooltip-content p {
+    margin: 0 0 15px 0;
+    line-height: 1.5;
+}
+
+.tooltip-content ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tooltip-content li {
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-size: 0.9rem;
+}
+/* Container for the icon */
+.sidebar-tooltip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+/* Tooltip Styling */
+.sidebar-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    
+    /* Position to the left of the icon */
+    right: 140%; 
+    top: 50%;
+    transform: translateY(-50%) translateX(10px); /* Start slightly to the right for animation */
+    
+    /* Visual Style */
+    background: #1a1a1a;
+    color: #ffffff;
+    padding: 8px 15px;
+    border-radius: 50px; /* Pill shape */
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    
+    /* Animation Properties */
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* Bouncy effect */
+    pointer-events: none;
+}
+
+/* The little arrow pointing to the icon */
+.sidebar-tooltip::before {
+    content: '';
+    position: absolute;
+    right: 110%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: transparent transparent transparent #1a1a1a; /* Triangle pointing right */
+    
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+}
+
+/* Hover States */
+.sidebar-tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(0); /* Slide into place */
+}
+
+.sidebar-tooltip:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Optional: Pulse animation for the icon itself */
+.sidebar-tooltip i {
+    transition: transform 0.2s ease;
+}
+
+.sidebar-tooltip:hover i {
+    transform: scale(1.2) rotate(-10deg);
+    color: #ffc107; /* Optional color change on hover */
+}
+
+.tooltip-content li:last-child {
+    border-bottom: none;
+}
 .text-center .divider { margin-inline: auto; }
 
 /* Aspect Ratio */
@@ -61,17 +219,6 @@ ul { list-style: none; }
 .site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; transition: background var(--transition), box-shadow var(--transition); }
 .site-header.transparent { background: transparent; }
 .site-header.scrolled { background: var(--white); box-shadow: var(--shadow-md); }
-
-.topbar { background: var(--navy); color: rgba(255,255,255,.8); font-size: .78rem; height: var(--topbar-h); display: flex; align-items: center; transition: height var(--transition), opacity var(--transition); overflow: hidden; }
-.site-header.scrolled .topbar { height: 0; opacity: 0; }
-.topbar .container { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.topbar-contact { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-.topbar-contact a { color: rgba(255,255,255,.75); transition: color var(--transition); }
-.topbar-contact a:hover { color: var(--gold); }
-.topbar-contact i { margin-right: 5px; color: var(--gold); }
-.topbar-social { display: flex; gap: 10px; }
-.topbar-social a { color: rgba(255,255,255,.6); font-size: .85rem; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: color var(--transition), background var(--transition); }
-.topbar-social a:hover { color: var(--white); background: rgba(255,255,255,.15); }
 
 .navbar { height: var(--header-h); display: flex; align-items: center; transition: height var(--transition); }
 .site-header.scrolled .navbar { height: 62px; }
@@ -410,9 +557,34 @@ ul { list-style: none; }
 /* Floating Buttons */
 .whatsapp-btn { position: fixed; bottom: 80px; right: 20px; z-index: 900; width: 50px; height: 50px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--white); font-size: 1.4rem; box-shadow: 0 4px 16px rgba(37,211,102,.4); transition: transform var(--transition); }
 .whatsapp-btn:hover { transform: scale(1.1); }
+.announcement-btn { position: fixed; bottom: 140px; right: 20px; z-index: 900; width: 50px; height: 50px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--navy); font-size: 1.4rem; box-shadow: 0 4px 16px rgba(212,175,55,.4); transition: transform var(--transition); text-decoration: none; }
+.announcement-btn:hover { transform: scale(1.1); }
 .back-to-top { position: fixed; bottom: 20px; right: 20px; z-index: 900; width: 44px; height: 44px; background: var(--navy); color: var(--white); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: var(--shadow-md); opacity: 0; visibility: hidden; transform: translateY(10px); transition: all .3s ease; cursor: pointer; border: none; }
 .back-to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
 .back-to-top:hover { background: var(--gold); color: var(--navy); }
+
+/* Announcements */
+.announcements-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 32px; }
+
+.announcement-card { background: var(--white); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--shadow-sm); border-left: 4px solid var(--gold); transition: transform var(--transition), box-shadow var(--transition); }
+.announcement-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+.announcement-card.priority-high { border-left-color: #e74c3c; }
+.announcement-card.priority-medium { border-left-color: var(--gold); }
+.announcement-card.priority-low { border-left-color: #95a5a6; }
+
+.announcement-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+
+.announcement-priority .priority-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.priority-badge.priority-high { background: #e74c3c; color: var(--white); }
+.priority-badge.priority-medium { background: var(--gold); color: var(--navy); }
+.priority-badge.priority-low { background: #95a5a6; color: var(--white); }
+
+.announcement-date { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 0.875rem; }
+.announcement-date i { font-size: 0.875rem; }
+
+.announcement-content h3 { font-family: var(--font-display); font-size: 1.25rem; color: var(--navy); margin-bottom: 12px; }
+.announcement-content p { color: var(--text); line-height: 1.6; margin-bottom: 0; }
 
 /* Footer */
 .site-footer { background: #001030; color: rgba(255,255,255,.7); padding-top: 72px; }
@@ -493,6 +665,7 @@ ul { list-style: none; }
   .page-banner h1 { font-size: 1.4rem; }
   .btn { padding: 10px 18px; font-size: .85rem; }
   .whatsapp-btn { bottom: 75px; right: 12px; width: 44px; height: 44px; font-size: 1.2rem; }
+  .announcement-btn { bottom: 130px; right: 12px; width: 44px; height: 44px; font-size: 1.2rem; }
   .back-to-top { bottom: 16px; right: 12px; width: 40px; height: 40px; font-size: 1rem; }
 }
 

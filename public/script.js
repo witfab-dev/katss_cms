@@ -421,4 +421,44 @@
     });
   });
 
+  /* ── Announcement Button Scroll ── */
+  window.scrollToAnnouncements = function(e) {
+    if (e) e.preventDefault();
+    
+    const announcementsSection = document.getElementById('news-events');
+    if (announcementsSection) {
+      announcementsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  /* ── Announcement Icon Tooltip ── */
+  document.addEventListener('DOMContentLoaded', function() {
+    const announcementIcon = document.querySelector('.announcement-icon');
+    const announcementTooltip = document.getElementById('announcementTooltip');
+    
+    if (announcementIcon && announcementTooltip) {
+      // Show tooltip on hover
+      announcementIcon.addEventListener('mouseenter', function() {
+        announcementTooltip.style.visibility = 'visible';
+        announcementTooltip.style.opacity = '1';
+      });
+      
+      // Hide tooltip on mouse leave with delay
+      announcementIcon.addEventListener('mouseleave', function() {
+        setTimeout(function() {
+          announcementTooltip.style.visibility = 'hidden';
+          announcementTooltip.style.opacity = '0';
+        }, 200);
+      });
+      
+      // Hide tooltip when clicking elsewhere
+      document.addEventListener('click', function(e) {
+        if (!announcementIcon.contains(e.target) && !announcementTooltip.contains(e.target)) {
+          announcementTooltip.style.visibility = 'hidden';
+          announcementTooltip.style.opacity = '0';
+        }
+      });
+    }
+  });
+
 })();

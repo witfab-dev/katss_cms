@@ -438,7 +438,15 @@ $categories = $db->query("SELECT DISTINCT category FROM events WHERE category IS
                         <td><?php echo $event['id']; ?></td>
                         <td>
                             <?php if ($event['image_url']): ?>
-                                <img src="<?php echo htmlspecialchars($event['image_url']); ?>" class="event-image" alt="">
+                                <?php 
+                                // Ensure proper base path for images
+                                $imagePath = $event['image_url'];
+                                // If path doesn't start with admin/, add it
+                                if (strpos($imagePath, 'admin/') !== 0) {
+                                    $imagePath = 'admin/' . $imagePath;
+                                }
+                                ?>
+                                <img src="<?php echo htmlspecialchars($imagePath); ?>" class="event-image" alt="" onerror="this.src='admin/uploads/events/default.jpg';">
                             <?php else: ?>
                                 <span style="color:#999;">No image</span>
                             <?php endif; ?>

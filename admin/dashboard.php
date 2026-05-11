@@ -249,6 +249,7 @@ $recentGallery = $db->query("SELECT id, title, media_type, status FROM gallery_i
             <a href="dashboard.php" class="active"><i class="bi bi-house-door"></i><span> Dashboard</span></a>
             <a href="events.php"><i class="bi bi-megaphone"></i><span> Events</span></a>
             <a href="gallery.php"><i class="bi bi-images"></i><span> Gallery</span></a>
+            <a href="management-team.php"><i class="bi bi-person-badge"></i><span> Management Team</span></a>
         </div>
         <div class="user-info">
             <span><i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($_SESSION['admin_username']); ?></span>

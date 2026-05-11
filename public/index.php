@@ -1,95 +1,300 @@
 <?php
 /**
  * KATSS - Kirehe Adventist Technical Secondary School
- * Main Website - All pages combined with dynamic image display
+ * Main Website - Dynamic Image Display Fixed
  */
 
 require_once '../config/database.php';
+
 $database = new Database();
 $db = $database->getConnection();
 
-// Fetch events
+/* =========================================
+   FETCH EVENTS
+========================================= */
 try {
-    $stmt = $db->prepare("SELECT * FROM events WHERE status = 'published' ORDER BY event_date DESC LIMIT 8");
+    $stmt = $db->prepare("
+        SELECT * FROM events
+        WHERE status = 'published'
+        ORDER BY event_date DESC
+        LIMIT 8
+    ");
+    
     $stmt->execute();
     $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { $events = []; }
 
-// Fetch featured events
+} catch (PDOException $e) {
+
+    $events = [];
+}
+
+/* =========================================
+   FETCH FEATURED EVENTS
+========================================= */
 try {
-    $stmt = $db->prepare("SELECT * FROM events WHERE status = 'published' AND is_featured = 1 ORDER BY event_date DESC LIMIT 3");
+
+    $stmt = $db->prepare("
+        SELECT * FROM events
+        WHERE status = 'published'
+        AND is_featured = 1
+        ORDER BY event_date DESC
+        LIMIT 3
+    ");
+
     $stmt->execute();
+
     $featured_events = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { $featured_events = []; }
 
-// Fetch gallery items
+} catch (PDOException $e) {
+
+    $featured_events = [];
+}
+
+/* =========================================
+   FETCH GALLERY ITEMS
+========================================= */
 try {
-    $stmt = $db->prepare("SELECT * FROM gallery_items WHERE status = 'active' ORDER BY created_at DESC LIMIT 12");
+
+    $stmt = $db->prepare("
+        SELECT * FROM gallery_items
+        WHERE status = 'active'
+        ORDER BY created_at DESC
+        LIMIT 12
+    ");
+
     $stmt->execute();
+
     $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { $gallery_items = []; }
 
-/**
- * Resolve image path from database to a working URL
- * DB stores: uploads/events/filename.jpg
- * Public accesses: admin/uploads/events/filename.jpg
- */
-function resolve_image(string $raw, string $fallback = ''): string {
+} catch (PDOException $e) {
+
+    $gallery_items = [];
+}
+
+/* =========================================
+   FETCH MANAGEMENT TEAM
+========================================= */
+try {
+
+    $stmt = $db->prepare("
+        SELECT * FROM management_team
+        WHERE status = 'active'
+        ORDER BY sort_order ASC, created_at DESC
+    ");
+
+    $stmt->execute();
+
+    $management_team = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+
+    $management_team = [];
+}
+
+/* =========================================
+   FETCH ANNOUNCEMENTS
+========================================= */
+try {
+
+    $stmt = $db->prepare("
+        SELECT * FROM announcements
+        WHERE status = 'active'
+        ORDER BY priority DESC, created_at DESC
+        LIMIT 10
+    ");
+
+    $stmt->execute();
+
+    $announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+
+    $announcements = [];
+}
+
+/* =========================================
+   IMAGE PATH RESOLVER
+========================================= */
+
+function resolve_image(string $raw, string $fallback = ''): string
+{
     $raw = trim($raw);
-    if ($raw === '') return $fallback;
-    
-    // External URLs pass through unchanged
+
+    // Empty path
+    if ($raw === '') {
+        return $fallback;
+    }
+
+    // External URL
     if (preg_match('#^https?://#i', $raw)) {
-        return htmlspecialchars($raw, ENT_QUOTES, 'UTF-8');
+
+        return htmlspecialchars(
+            $raw,
+            ENT_QUOTES,
+            'UTF-8'
+        );
     }
-    
-    $path = ltrim($raw, '/');
-    $path = preg_replace('#^(\.\./|\./)+#', '', $path);
-    
-    // Try multiple possible paths
-    $possiblePaths = [
-        'admin/' . $path,
-        $path,
-        'admin/' . ltrim($path, 'admin/'),
+
+    /*
+      REMOVE:
+      ../
+      ./
+      leading /
+    */
+
+    $path = str_replace(
+        ['../', './'],
+        '',
+        $raw
+    );
+
+    $path = ltrim($path, '/');
+
+    /*
+      CASES:
+
+      uploads/gallery/a.jpg
+      uploads/events/b.jpg
+      admin/uploads/a.jpg
+    */
+
+    if (strpos($path, 'admin/') === 0) {
+
+        // already contains admin/
+        $finalPath = '../' . $path;
+
+    } elseif (strpos($path, 'uploads/') === 0) {
+
+        // uploads/... → admin/uploads/...
+        $finalPath = '../admin/' . $path;
+
+    } else {
+
+        // fallback
+        $finalPath = '../admin/uploads/' . $path;
+    }
+
+    // Debugging log
+    error_log("Resolved Image: {$raw} => {$finalPath}");
+
+    return htmlspecialchars(
+        $finalPath,
+        ENT_QUOTES,
+        'UTF-8'
+    );
+}
+
+/* =========================================
+   EVENT IMAGE
+========================================= */
+
+function event_image(array $event): string
+{
+    $fallback =
+        'https://placehold.co/800x450/003366/D4AF37?text=KATSS+Event';
+
+    $columns = [
+        'image_url',
+        'image_path',
+        'thumbnail_path'
     ];
-    
-    foreach ($possiblePaths as $tryPath) {
-        $fullPath = __DIR__ . '/' . $tryPath;
-        if (file_exists($fullPath)) {
-            return htmlspecialchars($tryPath, ENT_QUOTES, 'UTF-8');
+
+    foreach ($columns as $column) {
+
+        if (
+            isset($event[$column]) &&
+            !empty($event[$column])
+        ) {
+
+            return resolve_image(
+                $event[$column],
+                $fallback
+            );
         }
     }
-    
+
     return $fallback;
 }
 
-function event_image(array $event): string {
-    $fallback = 'https://placehold.co/800x450/003366/D4AF37?text=KATSS+Event';
-    foreach (['image_url', 'image_path', 'thumbnail_path'] as $col) {
-        if (!empty($event[$col])) return resolve_image($event[$col], $fallback);
-    }
-    return $fallback;
-}
+/* =========================================
+   GALLERY IMAGE
+========================================= */
 
-function gallery_image(array $item): string {
-    $title = urlencode($item['title'] ?? 'Gallery');
-    $fallback = "https://placehold.co/600x400/003366/D4AF37?text={$title}";
-    // Check media_url FIRST since that's what your database uses
-    foreach (['media_url', 'file_path', 'thumbnail_path'] as $col) {
-        if (!empty($item[$col])) {
-            return resolve_image($item[$col], $fallback);
+function gallery_image(array $item): string
+{
+    $title = urlencode(
+        $item['title'] ?? 'Gallery'
+    );
+
+    $fallback =
+        "https://placehold.co/600x400/003366/D4AF37?text={$title}";
+
+    $columns = [
+        'file_path',
+        'media_url',
+        'thumbnail_path'
+    ];
+
+    foreach ($columns as $column) {
+
+        if (
+            isset($item[$column]) &&
+            !empty($item[$column])
+        ) {
+
+            $resolved = resolve_image(
+                $item[$column],
+                $fallback
+            );
+
+            error_log(
+                "Gallery Image: " .
+                ($item['title'] ?? 'Unknown') .
+                " => {$resolved}"
+            );
+
+            return $resolved;
         }
     }
+
     return $fallback;
 }
 
-function gallery_video(array $item): string {
+/* =========================================
+   GALLERY VIDEO
+========================================= */
+
+function gallery_video(array $item): string
+{
     $fallback = '';
-    foreach (['media_url', 'file_path'] as $col) {
-        if (!empty($item[$col])) {
-            return resolve_image($item[$col], $fallback);
+
+    $columns = [
+        'file_path',
+        'media_url'
+    ];
+
+    foreach ($columns as $column) {
+
+        if (
+            isset($item[$column]) &&
+            !empty($item[$column])
+        ) {
+
+            $resolved = resolve_image(
+                $item[$column],
+                $fallback
+            );
+
+            error_log(
+                "Gallery Video: " .
+                ($item['title'] ?? 'Unknown') .
+                " => {$resolved}"
+            );
+
+            return $resolved;
         }
     }
+
     return $fallback;
 }
 ?>
@@ -110,21 +315,6 @@ function gallery_video(array $item): string {
 </head>
 <body>
 
-<!-- TOP BAR -->
-<div class="topbar">
-  <div class="container">
-    <div class="topbar-contact">
-      <a href="mailto:katsapapen@gmail.com"><i class="bi bi-envelope-fill"></i>katsapapen@gmail.com</a>
-      <a href="tel:+250788416574"><i class="bi bi-telephone-fill"></i>+250 788 416 574</a>
-    </div>
-    <div class="topbar-social">
-      <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
-      <a href="https://youtube.com" target="_blank" rel="noopener" aria-label="YouTube"><i class="bi bi-youtube"></i></a>
-      <a href="https://twitter.com" target="_blank" rel="noopener" aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>
-      <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
-    </div>
-  </div>
-</div>
 
 <!-- HEADER -->
 <header class="site-header transparent" id="siteHeader">
@@ -368,9 +558,19 @@ function gallery_video(array $item): string {
       <blockquote style="border-left:4px solid var(--gold);padding:16px 24px;margin:0 0 32px;font-style:italic;color:var(--text-muted);font-size:1.05rem;line-height:1.8;background:var(--cream);border-radius:0 var(--radius-sm) var(--radius-sm) 0;">"At KATSS, we believe in unlocking the potential of every student. Our state-of-the-art workshops and dedicated staff provide an environment where hands-on learning thrives."</blockquote>
       <h3 style="font-family:var(--font-display);font-size:1.2rem;color:var(--navy);margin-bottom:20px;">Management Team</h3>
       <div class="leadership-grid">
-        <div class="leader-card"><div class="role">Director of Study</div><div class="contact-info">Contact: 078xxxxxxxx</div></div>
-        <div class="leader-card"><div class="role">Discipline Master</div><div class="contact-info">Contact: 0788853705</div></div>
-        <div class="leader-card"><div class="role">Accountant</div><div class="contact-info">Contact: 07899999999</div></div>
+        <?php if (!empty($management_team)): ?>
+          <?php foreach ($management_team as $member): ?>
+            <div class="leader-card">
+              <div class="name"><?php echo htmlspecialchars($member['name']); ?></div>
+              <div class="role"><?php echo htmlspecialchars($member['post']); ?></div>
+              <div class="contact-info">Contact: <?php echo htmlspecialchars($member['telephone']); ?></div>
+            </div>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="leader-card"><div class="name"></div><div class="role">Director of Study</div><div class="contact-info">Contact: 078xxxxxxxx</div></div>
+          <div class="leader-card"><div class="name"></div><div class="role">Discipline Master</div><div class="contact-info">Contact: 0788853705</div></div>
+          <div class="leader-card"><div class="name"></div><div class="role">Accountant</div><div class="contact-info">Contact: 07899999999</div></div>
+        <?php endif; ?>
       </div>
     </div>
   </section>
@@ -446,6 +646,83 @@ function gallery_video(array $item): string {
       </div>
     </div>
   </section>
+  
+  <!-- ANNOUNCEMENTS SECTION -->
+  <section class="section section--alt">
+    <div class="container">
+      <p class="section-label">Important Updates</p><h2 class="section-title">School Announcements</h2><div class="divider"></div>
+      
+      <div class="announcements-grid">
+        <?php if (!empty($announcements)): ?>
+          <?php foreach ($announcements as $announcement): ?>
+            <div class="announcement-card priority-<?php echo htmlspecialchars($announcement['priority']); ?>">
+              <div class="announcement-header">
+                <div class="announcement-priority">
+                  <span class="priority-badge priority-<?php echo htmlspecialchars($announcement['priority']); ?>">
+                    <?php echo htmlspecialchars(ucfirst($announcement['priority'])); ?>
+                  </span>
+                </div>
+                <div class="announcement-date">
+                  <i class="bi bi-calendar3"></i>
+                  <?php echo date('M d, Y', strtotime($announcement['created_at'])); ?>
+                </div>
+              </div>
+              <div class="announcement-content">
+                <h3><?php echo htmlspecialchars($announcement['title']); ?></h3>
+                <p><?php echo htmlspecialchars($announcement['content']); ?></p>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="announcement-card priority-medium">
+            <div class="announcement-header">
+              <div class="announcement-priority">
+                <span class="priority-badge priority-medium">Medium</span>
+              </div>
+              <div class="announcement-date">
+                <i class="bi bi-calendar3"></i>
+                <?php echo date('M d, Y'); ?>
+              </div>
+            </div>
+            <div class="announcement-content">
+              <h3>Welcome to KATSS</h3>
+              <p>We are excited to announce the launch of our new digital platform for better communication with parents and students.</p>
+            </div>
+          </div>
+          <div class="announcement-card priority-low">
+            <div class="announcement-header">
+              <div class="announcement-priority">
+                <span class="priority-badge priority-low">Low</span>
+              </div>
+              <div class="announcement-date">
+                <i class="bi bi-calendar3"></i>
+                <?php echo date('M d, Y', strtotime('-1 week')); ?>
+              </div>
+            </div>
+            <div class="announcement-content">
+              <h3>School Calendar Update</h3>
+              <p>The academic calendar for the upcoming term has been updated. Please check the admissions page for important dates.</p>
+            </div>
+          </div>
+          <div class="announcement-card priority-high">
+            <div class="announcement-header">
+              <div class="announcement-priority">
+                <span class="priority-badge priority-high">High</span>
+              </div>
+              <div class="announcement-date">
+                <i class="bi bi-calendar3"></i>
+                <?php echo date('M d, Y', strtotime('-2 weeks')); ?>
+              </div>
+            </div>
+            <div class="announcement-content">
+              <h3>Enrollment Now Open</h3>
+              <p>Applications for the 2025-2026 academic year are now being accepted. Limited spaces available.</p>
+            </div>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </section>
 </section>
 
 <!-- ===== STUDENT LIFE PAGE ===== -->
@@ -488,11 +765,14 @@ function gallery_video(array $item): string {
     <div class="container">
       <div class="gallery-grid">
         <?php if (!empty($gallery_items)): foreach ($gallery_items as $item):
-          $mediaType = $item['media_type'] ?? 'image';
-          if ($mediaType === 'video'): ?>
+          // Auto-detect video files by checking file extension
+          $filePath = $item['file_path'] ?? $item['media_url'] ?? '';
+          $isVideo = $filePath && (preg_match('/\.(mp4|webm|ogg|avi|mov|wmv)$/i', $filePath));
+          
+          if ($isVideo): ?>
           <div class="gallery-item gallery-item--video" data-type="video" data-video="<?php echo gallery_video($item); ?>">
             <div class="video-thumb">
-              <video muted loop preload="metadata" poster="<?php echo gallery_image($item); ?>">
+              <video muted loop preload="metadata" poster="<?php echo gallery_video($item); ?>#t=0.1">
                 <source src="<?php echo gallery_video($item); ?>" type="video/mp4">
               </video>
               <div class="play-overlay"><i class="bi bi-play-circle-fill"></i></div>
@@ -620,6 +900,14 @@ function gallery_video(array $item): string {
 
 <!-- FLOATING BUTTONS -->
 <a href="https://wa.me/250788416574" target="_blank" rel="noopener" class="whatsapp-btn" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>
+<a href="#news-events"
+   class="announcement-btn sidebar-tooltip"
+   data-page="news-events"
+   aria-label="Announcements"
+   data-tooltip="Latest Announcements"
+   onclick="scrollToAnnouncements(event)">
+   <i class="bi bi-megaphone"></i>
+</a>
 <button id="backToTop" class="back-to-top" aria-label="Back to top"><i class="bi bi-arrow-up"></i></button>
 
 <!-- LIGHTBOX -->

@@ -30,6 +30,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 </a>
             </li>
             <li>
+                <a href="management-team.php" class="<?php echo $current_page === 'management-team.php' ? 'active' : ''; ?>">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Management Team</span>
+                </a>
+            </li>
+            <li>
                 <a href="#" class="dropdown-toggle">
                     <i class="bi bi-people"></i>
                     <span>Users</span>
